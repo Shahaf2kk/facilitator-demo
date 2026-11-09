@@ -147,7 +147,84 @@
       o.facilitator_ids.filter((f => !kept.has(f))).forEach((f => dropRecords((r => r.assignment_id === aid && r.session_date === o.session_date && r.facilitator_id === f))));
     }));
   }
-  const routes = [ [ 'GET', /^\/api\/facilitators\/?$/, () => D.facilitators ], [ 'GET', /^\/api\/frameworks\/?$/, () => D.frameworks ], [ 'GET', /^\/api\/assignments\/?$/, () => D.assignments ], [ 'GET', /^\/api\/holidays\/?$/, () => D.holidays ], [ 'GET', /^\/api\/users\/?$/, () => (needCoord(), 
+  const STOP = new Set("איך מה מי את של על זה זו יש אין אני אנחנו לא כן עם או גם אם כדי אפשר צריך עושים לעשות למה מתי איפה כל הוא היא הם הן שלי שלך לי לך בו בה רק עוד כבר יותר פעם אחרי לפני אותו אותה יכול יכולה רוצה".split(" "));
+  // Verb/noun families → one form, so "מוחקים" finds "מחיקת", "מוסיפים" finds "הוסף".
+  const FAMILIES = [ [ "מחק", /^(ל|ו|ש)?(מוחק|מחק|מחיק|נמחק|למחוק)/ ], [ "הוסף", /^(ל|ו|ש)?(מוסיפ|להוסיף|הוספ|הוסף|תוסיף)/ ], [ "יצר", /^(ל|ו|ש)?(יוצר|ליצור|יציר|יצר|חדש)/ ],
+    [ "שלח", /^(ל|ו|ש)?(שולח|לשלוח|שליח|שלח|נשלח)/ ], [ "ערך", /^(ל|ו|ש)?(עורכ|לערוך|עריכ|ערוך|ערכ|עדכן|לעדכן|מעדכנ)/ ], [ "בטל", /^(ל|ו|ש)?(מבטל|לבטל|ביטול|בטל|בוטל)/ ],
+    [ "העבר", /^(ל|ו|ש)?(מעביר|להעביר|העבר|הועבר|גריר|גורר|לגרור)/ ], [ "אשר", /^(ל|ו|ש)?(מאשר|לאשר|אישור|אשר|אושר)/ ], [ "דחה", /^(ל|ו|ש)?(דוח|לדחות|דחי|דחה|נדח)/ ],
+    [ "הורד", /^(ל|ו|ש)?(מוריד|להוריד|הורד|אקסל)/ ], [ "חג", /^(ל|ו|ש|ה|ב)?(חג|חגים)$/ ], [ "סנן", /^(ל|ו|ש)?(מסננ|לסנן|סינון|סנן)/ ], [ "יומן", /^(ל|ו|ש|ב|ה)?(יומן|זימון)/ ] ];
+  const norm = t => String(t || "").replace(/[\u0591-\u05C7]/g, "").replace(/["'״׳*]/g, "").toLowerCase();
+  function canon(w) {
+    for (const [c, re] of FAMILIES) if (re.test(w)) return c;
+    if (w.length > 3 && "הובלמשכ".includes(w[0])) w = w.slice(1);
+    const m = w.match(/^(.{2,}?)(ים|ות|ה|ת|י)$/);
+    return m ? m[1] : w;
+  }
+  const words = t => norm(t).split(/[^א-תa-z0-9]+/).filter(w => w.length > 1 && !STOP.has(w)).map(canon);
+  const grams = w => { const g = new Set(); for (let i = 0; i < w.length - 1; i++) g.add(w.slice(i, i + 2)); return g; };
+  function alike(a, b) {
+    if (a === b) return true;
+    if (a.length < 4 || b.length < 4) return false;
+    const ga = grams(a), gb = grams(b); let n = 0; ga.forEach(x => gb.has(x) && n++);
+    return 2 * n / (ga.size + gb.size) >= 0.75;
+  }
+  const has = (set, w) => { for (const x of set) if (alike(w, x)) return true; return false; };
+  let INDEX = null;
+  function index() {
+    if (INDEX) return INDEX;
+    const lines = [];
+    DEMO_HELP.sections.forEach((s, si) => {
+      const head = new Set(words(s.title));
+      s.body.split("\n").filter(l => l.trim()).forEach((text, i) => lines.push({ si, i, text, set: new Set(words(text)), head }));
+    });
+    const df = w => lines.filter(l => has(l.set, w)).length;
+    return INDEX = { lines, idf: w => Math.log((lines.length + 1) / (df(w) + 1)) + 0.1 };
+  }
+  function guideAnswer(question) {
+    const q = [ ...new Set(words(question)) ];
+    if (!q.length) return null;
+    const { lines, idf } = index();
+    const weight = Object.fromEntries(q.map(w => [ w, idf(w) ]));
+    const total = q.reduce((n, w) => n + weight[w], 0);
+    const score = l => q.reduce((n, w) => n + (has(l.set, w) ? weight[w] : 0) + (has(l.head, w) ? weight[w] * 0.5 : 0), 0);
+    const ranked = lines.map(l => ({ ...l, n: score(l) })).sort((x, y) => y.n - x.n);
+    const best = ranked[0];
+    if (!best || best.n < total * 0.45) return null;
+    const sec = DEMO_HELP.sections[best.si];
+    const pick = ranked.filter(l => l.si === best.si && l.n >= best.n * 0.5).slice(0, 5).sort((x, y) => x.i - y.i).map(l => l.text);
+    return `מתוך המדריך — ${sec.title}:\n\n${pick.join("\n")}`;
+  }
+  function faqAnswer(question) {
+    const q = new Set(words(question));
+    if (!q.size) return null;
+    let best = null, bestShare = 0;
+    for (const f of DEMO_HELP.faq) {
+      const fq = new Set(words(f.q));
+      const share = [ ...q ].filter(w => has(fq, w)).length / Math.max(q.size, fq.size);
+      if (share > bestShare) { best = f; bestShare = share; }
+    }
+    return bestShare >= 0.66 ? best : null;
+  }
+  const faqNorm = t => norm(t).replace(/[^א-תa-z0-9]+/g, " ").trim();
+  const helpRoutes = [ [ "GET", /^\/api\/help\/faq$/, () => (needCoord(), {
+    questions: DEMO_HELP.faq.filter((f => !f.extra)).map((f => f.q)),
+    ai_enabled: true
+  }) ], [ "POST", /^\/api\/help\/chat$/, (m, b) => {
+    needCoord();
+    const question = String(b.question || "").trim();
+    if (!question) fail("נא לכתוב שאלה");
+    const faq = DEMO_HELP.faq.find((f => faqNorm(f.q) === faqNorm(question))) || faqAnswer(question);
+    if (faq) return {
+      answer: faq.a,
+      source: "faq"
+    };
+    const answer = guideAnswer(question);
+    return {
+      answer: answer || "לא מצאתי תשובה במדריך לשאלה הזו. נסו לנסח במילים אחרות (למשל שם של כפתור או מסך), או לבחור מ\"שאלות נפוצות\".",
+      source: "guide"
+    };
+  } ] ];
+  const routes = [ ...helpRoutes, [ 'GET', /^\/api\/facilitators\/?$/, () => D.facilitators ], [ 'GET', /^\/api\/frameworks\/?$/, () => D.frameworks ], [ 'GET', /^\/api\/assignments\/?$/, () => D.assignments ], [ 'GET', /^\/api\/holidays\/?$/, () => D.holidays ], [ 'GET', /^\/api\/users\/?$/, () => (needCoord(), 
   D.users) ], [ 'GET', /^\/api\/sent-confirmations$/, () => isCoord() ? D.sent : D.sent.filter((r => r.facilitator_id === myFid())) ], [ 'GET', /^\/api\/confirmations\/my$/, () => isCoord() ? D.confirmations : D.confirmations.filter((r => r.facilitator_id === myFid())) ], [ 'GET', /^\/api\/export\/calendar-invite-status$/, () => D.ics.filter((r => r.facilitator_id === myFid())).map((r => ({
     ...r,
     sent: true
