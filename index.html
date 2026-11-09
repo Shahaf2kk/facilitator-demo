@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>לוח שיבוצי מנחים — גרסת הדגמה</title>
+  <!-- Not for search engines, scraping or AI training -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai">
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css?v=1794227001">
+  <link rel="stylesheet" href="css/demo.css?v=1794227001">
+</head>
+<body class="app-locked">
+
+  <!-- Not used in the demo (there is no login), kept because the app expects it -->
+  <div id="login-overlay" class="login-overlay" style="display:none">
+    <form id="login-form"><input id="login-email"><div id="login-err"></div></form>
+  </div>
+
+  <header class="app-header">
+    <div class="header-logos"></div>
+    <div class="header-center">
+      <h1>לוח שיבוצי מנחים</h1>
+      <span class="header-subtitle">גרסת הדגמה</span>
+    </div>
+    <div class="header-left">
+      <div id="header-stats" class="header-stats"></div>
+      <div id="header-user" class="header-user"></div>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="calendar">לוח שנה</button>
+    <button class="tab-btn" data-tab="facilitators">מנחים</button>
+    <button class="tab-btn coord-only" data-tab="frameworks">מסגרות</button>
+  </nav>
+
+  <main class="main-content">
+    <section id="calendar-tab"     class="tab-content active"></section>
+    <section id="facilitators-tab" class="tab-content"></section>
+    <section id="frameworks-tab"   class="tab-content coord-only"></section>
+  </main>
+
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal" class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/demo-data.js?v=1794227001"></script>
+  <script src="js/api.js?v=1794227001"></script>
+  <script src="js/demo-backend.js?v=1794227001"></script>
+  <script src="js/db.js?v=1794227001"></script>
+  <script src="js/auth.js?v=1794227001"></script>
+  <script src="js/facilitators.js?v=1794227001"></script>
+  <script src="js/frameworks.js?v=1794227001"></script>
+  <script src="js/calendar.js?v=1794227001"></script>
+  <script src="js/app.js?v=1794227001"></script>
+</body>
+</html>
