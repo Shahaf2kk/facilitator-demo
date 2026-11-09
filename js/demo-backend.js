@@ -205,6 +205,8 @@
     }
     return bestShare >= 0.66 ? best : null;
   }
+  const DEMO_NOTE = "\n\n— זו גרסת הדגמה: התשובה נמצאה בחיפוש במדריך, לא על ידי בינה מלאכותית. במערכת המלאה עונה עוזר AI אמיתי שמבין שאלות חופשיות.";
+  const DEMO_NOTE_NONE = "\n\n— זו גרסת הדגמה ללא בינה מלאכותית. במערכת המלאה עוזר AI אמיתי עונה גם על שאלות בניסוח חופשי.";
   const faqNorm = t => norm(t).replace(/[^א-תa-z0-9]+/g, " ").trim();
   const helpRoutes = [ [ "GET", /^\/api\/help\/faq$/, () => (needCoord(), {
     questions: DEMO_HELP.faq.filter((f => !f.extra)).map((f => f.q)),
@@ -220,7 +222,7 @@
     };
     const answer = guideAnswer(question);
     return {
-      answer: answer || "לא מצאתי תשובה במדריך לשאלה הזו. נסו לנסח במילים אחרות (למשל שם של כפתור או מסך), או לבחור מ\"שאלות נפוצות\".",
+      answer: answer ? answer + DEMO_NOTE : "לא מצאתי תשובה במדריך לשאלה הזו. נסו לנסח במילים אחרות (למשל שם של כפתור או מסך), או לבחור מ\"שאלות נפוצות\"." + DEMO_NOTE_NONE,
       source: "guide"
     };
   } ] ];
